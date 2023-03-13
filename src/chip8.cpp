@@ -1,8 +1,12 @@
 #include <iostream>
+#include <fstream>
+#include <vector>
 
 #include "chip8.h"
 
-unsigned char fontset[80] = {
+#define FONTSET_SIZE 80
+
+unsigned char fontset[FONTSET_SIZE] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
     0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
@@ -21,26 +25,91 @@ unsigned char fontset[80] = {
     0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 };
 
-Chip8::Chip8() {
-    PC = 0x200;     // Set program counter to 0x200
-    I = 0;          // Reset index register
-    opcode = 0;     // Reset current opcode
-    SP = 0;         // Reset stack pointer
-
-}
-
+Chip8::Chip8() {}
 Chip8::~Chip8() {}
 
-void Chip8::load_rom(){
-    // TODO
+// Initialize registers and memory
+void Chip8::init() {
+    PC = START_ADDRESS;     // Set program counter to 0x200
+    I = 0;                  // Reset index register
+    opcode = 0;             // Reset current opcode
+    SP = 0;                 // Reset stack pointer
+    
+    // Clear registers V0 to VF
+    for (int i=0; i<NUM_REGISTERS; ++i){
+        V[i] = 0;
+    }
+
+    // Clear stack
+    for (int i=0; i<STACK_SIZE; ++i){
+        stack[i] = 0;
+    }
+
+    // Clear memory
+    for (int i=0; i<MEMORY_SIZE; ++i){
+        memory[i] = 0;
+    }
+
+    // Clear display
+    for (int i=0; i<DISPLAY_WIDTH; ++i){
+        for (int j=0; j<DISPLAY_HEIGHT; ++j){
+            display[i][j] = 0;
+        }
+    }
+
+    // Load fontset into memory
+    for (int i=0; i<FONTSET_SIZE; ++i){
+        memory[i] = fontset[i];
+    }
+
+    // Reset timers
+    delay_timer = 0;
+    sound_timer = 0;
+
 }
 
-void Chip8::run_cycle() {
+// Load ROM instructions into memory
+bool Chip8::load_rom(const std::string &filename){
+    init();
+
+    std::ifstream rom(filename, std::ios::binary);
+    if (rom.is_open()){
+        // Read ROM instructions from file to buffer
+        char tmp;
+        std::vector<char> buffer;
+        while (rom.good()){
+            rom.read(&tmp, 4);      // Read 4-byte hexadecimal instruction
+            buffer.push_back(tmp);
+        }
+
+        // Check that size of ROM file is not greater than allowed memory space
+        if (buffer.size()>MEMORY_SIZE-START_ADDRESS){
+            std::cout << "ROM file is too big to be read into memory (max 4KB)" << std::endl;
+            return false;
+        }
+
+        // Read ROM instructions from buffer to memory
+        for (int i=0; i<buffer.size(); ++i){
+            memory[START_ADDRESS + i] = buffer.at(i);
+        }
+
+        rom.close();
+    } 
+    else {
+        std::cout << "Unable to load ROM" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+// Emulate one cycle
+void Chip8::emulate_cycle() {
     std::cout << "Cycle" << std::endl;
     
     // Fetch opcode
     opcode = (memory[PC] << 8) | memory[PC + 1];    // Read 2-byte opcode that the program counter is currently pointing to
-    PC += 2;    // Increment program counter to be ready to fetch next opcode
+    PC += 2;                                        // Increment program counter to be ready to fetch next opcode
 
     // Extract digits from the opcode
     uint16_t instruction_type = (opcode & 0xF000) >> 12;    // Type of instruction
@@ -53,7 +122,7 @@ void Chip8::run_cycle() {
     switch (instruction_type) {
         case 0x0:
             switch (Y){
-                 // Clear display
+                // Clear display
                 case 0xE:
                     for (int i=0; i<DISPLAY_WIDTH; ++i){
                         for (int j=0; j<DISPLAY_HEIGHT; ++j){
