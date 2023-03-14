@@ -18,9 +18,12 @@ class Chip8 {
         void init();                                    // Initialization
         bool load_rom(const std::string &filename);     // Load ROM file
         void emulate_cycle();                           // Emulate one cycle
+        void set_draw_flag(bool value);                 // Set value of draw_flag
+        bool get_draw_flag();                           // Get value of draw_flag
+        int get_display_pixel(int x, int y);            // Get display
 
     private:
-        int display[DISPLAY_WIDTH][DISPLAY_HEIGHT];    // 64 x 32 pixel display
+        int display[DISPLAY_WIDTH][DISPLAY_HEIGHT];     // 64 x 32 pixel display
 
         char memory[MEMORY_SIZE];       // RAM
         uint16_t stack[STACK_SIZE];     // Stack
@@ -30,6 +33,7 @@ class Chip8 {
         uint16_t I;                 // Index register which points to locations in memory
         uint16_t opcode;            // Current opcode
         uint8_t V[NUM_REGISTERS];   // General purpose variable registers
+        bool draw_flag;             // Value indicating if draw to display has occured
 
         uint8_t delay_timer;    // Delay timer
         uint8_t sound_timer;    // Sound timer

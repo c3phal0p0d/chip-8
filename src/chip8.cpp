@@ -34,6 +34,7 @@ void Chip8::init() {
     I = 0;                  // Reset index register
     opcode = 0;             // Reset current opcode
     SP = 0;                 // Reset stack pointer
+    set_draw_flag(0);       // Reset draw_flag
     
     // Clear registers V0 to VF
     for (int i=0; i<NUM_REGISTERS; ++i){
@@ -84,7 +85,7 @@ bool Chip8::load_rom(const std::string &filename){
 
         // Check that size of ROM file is not greater than allowed memory space
         if (buffer.size()>MEMORY_SIZE-START_ADDRESS){
-            std::cout << "ROM file is too big to be read into memory (max 4KB)" << std::endl;
+            std::cerr << "ROM file is too big to be read into memory (max 4KB)" << std::endl;
             return false;
         }
 
@@ -96,7 +97,7 @@ bool Chip8::load_rom(const std::string &filename){
         rom.close();
     } 
     else {
-        std::cout << "Unable to load ROM" << std::endl;
+        std::cerr << "Unable to load ROM" << std::endl;
         return false;
     }
 
@@ -105,8 +106,6 @@ bool Chip8::load_rom(const std::string &filename){
 
 // Emulate one cycle
 void Chip8::emulate_cycle() {
-    std::cout << "Cycle" << std::endl;
-    
     // Fetch opcode
     opcode = (memory[PC] << 8) | memory[PC + 1];    // Read 2-byte opcode that the program counter is currently pointing to
     PC += 2;                                        // Increment program counter to be ready to fetch next opcode
@@ -119,6 +118,8 @@ void Chip8::emulate_cycle() {
     uint16_t NN = (opcode & 0x00FF);                        // 8-bit immediate number
     uint16_t NNN = (opcode & 0x0FFF);                       // 12-bit immediate memory address
 
+    std::cout << instruction_type << std::endl;
+
     switch (instruction_type) {
         case 0x0:
             switch (Y){
@@ -129,6 +130,7 @@ void Chip8::emulate_cycle() {
                             display[i][j] = 0;
                         }
                     }
+                    set_draw_flag(1);
                     break;
             }
         
@@ -154,6 +156,7 @@ void Chip8::emulate_cycle() {
 
         // Draw N pixels tall sprite to the screen, from memory location pointed to by I, at coordinates in VX and VY
         case 0xD:
+            std::cout << "Draw" << std::endl;
             unsigned int x_coord = V[X] % 64;
             unsigned int y_coord = V[Y] % 32;
             V[0xF] = 0;
@@ -190,7 +193,20 @@ void Chip8::emulate_cycle() {
                 y_coord++;
             }
 
+            set_draw_flag(1);
+
             break;
     }
+}
 
+void Chip8::set_draw_flag(bool value){
+    draw_flag = value;
+}
+
+bool Chip8::get_draw_flag(){
+    return draw_flag;
+}
+
+int Chip8::get_display_pixel(int x, int y){
+    return display[x][y];
 }
